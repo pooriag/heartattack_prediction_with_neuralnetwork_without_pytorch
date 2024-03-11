@@ -1,7 +1,10 @@
+import copy
+
 import numpy as np
 
 sigmoid = "sigmoid"
 relu = "relu"
+CE = "crossEntropy"
 
 class NN_model():
     def __init__(self, layers, learning_rate, epochs, cost_func):
@@ -11,10 +14,15 @@ class NN_model():
         self.cost_func = cost_func
         self.parameters = {}
         self.grads = {}
+        self.losses = []
 
-        self.initialize()
+        if cost_func == CE:
+            self.loss_backward = cross_entropy_loss_backward
+            self.cost_func = compute_cross_entropy
 
-    def initialize(self):
+        self.initialize_parameters()
+
+    def initialize_parameters(self):
         for i in range(1, len(self.layers)):
             self.parameters["W" + str(i)] = np.random.randn(self.layers[i][0], self.layers[i - 1][0]) * 0.01
             self.parameters["b" + str(i)] = np.zeros(self.layers[i][0], 1)
@@ -22,8 +30,19 @@ class NN_model():
     def forward(self, X):
         model_forward(X, self.parameters, self.layers)
 
+    def backward(self, Y, AL, caches):
+        model_backward(AL, Y, caches, self.loss_backward, self.layers)
 
+    def train(self, X, Y):
 
+        for i in range(self.epochs):
+            AL, caches = self.forward(X)
+            grads = self.backward(Y, AL, caches)
+            update_parameters(self.parameters, grads, self.learning_rate)
+            if i % 50 == 0:
+                self.losses.append([i, self.cost_func(AL, Y)])
+
+##forward
 def model_forward(A0, parameters, layers):
 
     caches = []
@@ -60,3 +79,76 @@ def sigmoid_activation_forward(Z):
 
 def relu_activation_forward(Z):
     return max(0, Z), Z
+
+##backward
+
+def model_backward(A, Y, caches, loss_backward, layers):
+    dA = loss_backward(A, Y)
+
+    grads = {}
+
+    for i in reversed(range(len(caches))):#in cahces input layer is not included but in layers is
+        current_cache = caches[i]
+
+        dW, db, dA_prev = activation_backward(dA, current_cache, layers[i + 1][1])
+
+        grads["dA" + str(i)] = dA_prev
+        grads["dW" + str(i + 1)] = dW
+        grads["db" + str(i + 1)] = db
+        dA = dA_prev
+    return grads
+
+def linear_backward(dZ, linear_cache):
+    A_prev, W, b = linear_cache
+
+    m = A_prev.shape[1]
+
+    dW = np.dot(dZ, A_prev.T) / m
+    db = np.sum(dZ, axis=1, keepdims=True) / m
+    dA_prev = np.dot(W.T, dZ)
+
+    return (dW, db, dA_prev)
+
+def activation_backward(dA, cache, activation):
+    linear_cache , activation_cache = cache
+
+    if activation == sigmoid:
+        dZ = relu_activation_backward(dA, activation_cache)
+        dW, db, dA_prev = linear_backward(dZ, linear_cache)
+
+    if activation == relu:
+        dZ = relu_activation_backward(dA, activation_cache)
+        dW, db, dA_prev = linear_backward(dZ, linear_cache)
+
+    return dW, db, dA_prev
+
+def sigmoid_activation_backward(dA, Z):
+    dZ = dA * Z * (1 - Z)
+    return dZ
+
+def relu_activation_backward(dA, Z):
+    if Z >= 0:
+        return dA
+    elif Z < 0:
+        return 0
+
+def cross_entropy_loss_backward(AL, Y):
+    dAL = - (np.divide(Y, AL) - np.divide((1 - Y), (1 - AL)))
+
+####
+
+def update_parameters(parameters, grads, learning_rate):
+
+    params = copy.deepcopy(parameters)
+
+    L = len(params) / 2
+
+    for i in range(L):
+        params["dW" + str(i + 1)] -= learning_rate * grads["dW" + str(i + 1)]
+        params["db" + str(i + 1)] -= learning_rate * grads["db" + str(i + 1)]
+
+    return params
+
+#####cost functions
+def compute_cross_entropy(AL, Y):
+    cost = -np.sum((Y * np.log(AL) + (1 - Y) * np.log(1 - AL)), axis=1, keepdims=False) / m
