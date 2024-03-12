@@ -26,6 +26,6 @@ evaluation_data = norm_df[(norm_df.index % 3 == 2) & (norm_df.index % 2 == 1)]
 layers = [[len(norm_df.columns) - 1], [10, nn.relu], [1, nn.sigmoid]]
 M = nn.NN_model(layers, 3e-2, 10000, nn.CE)
 
-cad.train(train_data, 1, 20, M)
+cad.train(train_data, 40, 20, M)
 
 plot_losses(M.losses)

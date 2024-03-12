@@ -38,8 +38,8 @@ class NN_model():
         for i in range(self.epochs):
             AL, caches = self.forward(X)
             grads = self.backward(Y, AL, caches)
-            update_parameters(self.parameters, grads, self.learning_rate)
-            if i % 50 == 0:
+            self.parameters = update_parameters(self.parameters, grads, self.learning_rate)
+            if i % 10 == 0:
                 self.losses.append([i, self.cost_func(AL, Y)])
 
 ##forward
