@@ -25,13 +25,13 @@ class NN_model():
     def initialize_parameters(self):
         for i in range(1, len(self.layers)):
             self.parameters["W" + str(i)] = np.random.randn(self.layers[i][0], self.layers[i - 1][0]) * 0.01
-            self.parameters["b" + str(i)] = np.zeros(self.layers[i][0], 1)
+            self.parameters["b" + str(i)] = np.zeros((self.layers[i][0], 1))
 
     def forward(self, X):
-        model_forward(X, self.parameters, self.layers)
+        return model_forward(X, self.parameters, self.layers)
 
     def backward(self, Y, AL, caches):
-        model_backward(AL, Y, caches, self.loss_backward, self.layers)
+        return model_backward(AL, Y, caches, self.loss_backward, self.layers)
 
     def train(self, X, Y):
 
@@ -75,10 +75,13 @@ def activation_forward(A_prev, W, b, activation):
     return A, cache
 
 def sigmoid_activation_forward(Z):
-    return 1 / 1 + np.exp(-Z), Z
-
+    A = 1 / (1 + np.exp(-Z)), Z
+    return A
 def relu_activation_forward(Z):
-    return max(0, Z), Z
+    Z_copy = copy.deepcopy(Z)
+
+    Z_copy[Z_copy <= 0] = 0
+    return (Z_copy, Z)
 
 ##backward
 
@@ -127,13 +130,14 @@ def sigmoid_activation_backward(dA, Z):
     return dZ
 
 def relu_activation_backward(dA, Z):
-    if Z >= 0:
-        return dA
-    elif Z < 0:
-        return 0
+    dZ = np.zeros(Z.shape)
+    dZ[Z >= 0] = dA[Z >= 0]
+    return dZ
 
 def cross_entropy_loss_backward(AL, Y):
     dAL = - (np.divide(Y, AL) - np.divide((1 - Y), (1 - AL)))
+
+    return dAL
 
 ####
 
@@ -141,14 +145,17 @@ def update_parameters(parameters, grads, learning_rate):
 
     params = copy.deepcopy(parameters)
 
-    L = len(params) / 2
+    L = int(len(params) / 2)
 
     for i in range(L):
-        params["dW" + str(i + 1)] -= learning_rate * grads["dW" + str(i + 1)]
-        params["db" + str(i + 1)] -= learning_rate * grads["db" + str(i + 1)]
+        params["W" + str(i + 1)] -= learning_rate * grads["dW" + str(i + 1)]
+        params["b" + str(i + 1)] -= learning_rate * grads["db" + str(i + 1)]
 
     return params
 
 #####cost functions
 def compute_cross_entropy(AL, Y):
+    m = Y.shape[1]
     cost = -np.sum((Y * np.log(AL) + (1 - Y) * np.log(1 - AL)), axis=1, keepdims=False) / m
+
+    return cost
